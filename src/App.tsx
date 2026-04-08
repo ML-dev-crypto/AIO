@@ -60,14 +60,16 @@ const Navbar = ({
   onLogin, 
   onLogout, 
   cartCount, 
-  onOpenCart 
+  onOpenCart,
+  isLoggingIn
 }: { 
   onNav: (page: string) => void, 
   user: FirebaseUser | null, 
   onLogin: () => void, 
   onLogout: () => void,
   cartCount: number,
-  onOpenCart: () => void
+  onOpenCart: () => void,
+  isLoggingIn: boolean
 }) => {
   const [scrolled, setScrolled] = useState(false);
 
@@ -129,10 +131,17 @@ const Navbar = ({
         ) : (
           <button 
             onClick={onLogin}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full transition-all cursor-pointer"
+            disabled={isLoggingIn}
+            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <User className="w-4 h-4 text-white" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white">Login</span>
+            {isLoggingIn ? (
+              <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            ) : (
+              <User className="w-4 h-4 text-white" />
+            )}
+            <span className="text-[10px] font-bold uppercase tracking-widest text-white">
+              {isLoggingIn ? 'Logging in...' : 'Login'}
+            </span>
           </button>
         )}
 
@@ -1258,6 +1267,7 @@ export default function App() {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
 
   useEffect(() => {
@@ -1307,11 +1317,24 @@ export default function App() {
   }, []);
 
   const handleLogin = async () => {
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Login failed:", error);
+    } catch (error: any) {
+      if (error.code === 'auth/popup-blocked') {
+        alert("The login popup was blocked by your browser. Please allow popups for this site and try again.");
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        console.warn("Login request was cancelled by a newer request.");
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        console.log("User closed the login popup.");
+      } else {
+        console.error("Login failed:", error);
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -1326,7 +1349,7 @@ export default function App() {
 
   const addToCart = async (product: any) => {
     if (!user) {
-      handleLogin();
+      await handleLogin();
       return;
     }
 
@@ -1435,6 +1458,7 @@ export default function App() {
         onLogout={handleLogout}
         cartCount={cartItems.reduce((acc, item) => acc + item.quantity, 0)}
         onOpenCart={() => setIsCartOpen(true)}
+        isLoggingIn={isLoggingIn}
       />
       
       <Cart 
