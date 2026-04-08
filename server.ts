@@ -9,6 +9,8 @@ const PORT = 3000;
 
 // Initialize SQLite Database
 const db = new Database('guitar_shop.db');
+const brokenMidnightTelecasterImage = 'https://images.unsplash.com/photo-1585672841585-57f4335800a4?q=80&w=1200&auto=format&fit=crop';
+const fixedMidnightTelecasterImage = 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?q=80&w=1200&auto=format&fit=crop';
 
 // Create Tables
 db.exec(`
@@ -85,7 +87,7 @@ if (productCount.count === 0) {
       "Midnight Telecaster", 
       "$1,850", 
       "vintage", 
-      "https://images.unsplash.com/photo-1585672841585-57f4335800a4?q=80&w=1200&auto=format&fit=crop", 
+      fixedMidnightTelecasterImage,
       "",
       "A classic reimagined for the night. The Midnight Telecaster combines vintage aesthetics with modern playability. Its ash body is finished in a deep, lustrous black, complemented by gold hardware. The vintage-voiced single coils capture that iconic 'twang' while maintaining a quiet, noise-free operation.",
       JSON.stringify({
@@ -164,6 +166,10 @@ if (productCount.count === 0) {
   ];
   seedProducts.forEach(p => insertProduct.run(...p));
 }
+
+// Patch previously seeded data if it contains a dead image URL.
+db.prepare('UPDATE products SET image = ? WHERE name = ? AND image = ?')
+  .run(fixedMidnightTelecasterImage, 'Midnight Telecaster', brokenMidnightTelecasterImage);
 
 app.use(cors());
 app.use(express.json());

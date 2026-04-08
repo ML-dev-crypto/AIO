@@ -25,6 +25,7 @@ import {
   Minus
 } from 'lucide-react';
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
+import supabase from './lib/supabase';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
@@ -48,6 +49,28 @@ import {
 
 // --- UTILS ---
 const cn = (...classes: (string | boolean | undefined)[]) => classes.filter(Boolean).join(' ');
+const PRODUCT_IMAGE_FALLBACK = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000"><rect width="800" height="1000" fill="%230a0a0a"/><text x="50%" y="48%" fill="%23ffffff" opacity="0.55" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" font-weight="700">AIO</text><text x="50%" y="54%" fill="%23ffffff" opacity="0.35" text-anchor="middle" font-family="Arial, sans-serif" font-size="24">Image unavailable</text></svg>';
+const handleProductImageError: React.ReactEventHandler<HTMLImageElement> = (event) => {
+  const img = event.currentTarget;
+  img.onerror = null;
+  img.src = PRODUCT_IMAGE_FALLBACK;
+};
+const toNumericPrice = (value: unknown) => {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') return Number(value.replace(/[^0-9.-]/g, '')) || 0;
+  return 0;
+};
+const toDisplayPrice = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) return `$${value.toLocaleString()}`;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.startsWith('$')) return trimmed;
+    const numeric = Number(trimmed);
+    if (!Number.isNaN(numeric)) return `$${numeric.toLocaleString()}`;
+    return value;
+  }
+  return '$0';
+};
 
 // --- CONSTANTS ---
 const WORDS = ["ALL", "IN", "ONE", "GUITAR", "SHOP"];
@@ -409,6 +432,7 @@ const ProductCard: React.FC<{ product: any, onAddToCart: () => void, onClick: ()
         src={product.image} 
         alt={product.name} 
         referrerPolicy="no-referrer"
+        onError={handleProductImageError}
         className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -456,8 +480,7 @@ const Cart = ({
   });
 
   const total = items.reduce((acc, item) => {
-    const price = parseFloat(item.price.replace('$', '').replace(',', ''));
-    return acc + (price * item.quantity);
+    return acc + (toNumericPrice(item.price) * item.quantity);
   }, 0);
 
   const resetAndClose = () => {
@@ -509,7 +532,7 @@ const Cart = ({
                     items.map((item) => (
                       <div key={item.id} className="flex gap-6 group">
                         <div className="w-24 h-32 bg-[#111] rounded-lg overflow-hidden flex-shrink-0">
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          <img src={item.image} alt={item.name} onError={handleProductImageError} className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 flex flex-col justify-between py-1">
                           <div>
@@ -694,6 +717,7 @@ const ProductDetailPage = ({ product, onAddToCart, onBack }: { product: any, onA
               src={product.image} 
               alt={product.name} 
               referrerPolicy="no-referrer"
+              onError={handleProductImageError}
               className="w-full h-full object-cover"
             />
           </motion.div>
@@ -1165,9 +1189,14 @@ const ProfilePage = ({ user }: { user: FirebaseUser }) => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const res = await fetch(`/api/orders/${user.uid}`);
-        const data = await res.json();
-        setOrders(data);
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('user_id', user.uid)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setOrders(data || []);
       } catch (err) {
         console.error("Fetch orders error:", err);
       } finally {
@@ -1214,7 +1243,15 @@ const ProfilePage = ({ user }: { user: FirebaseUser }) => {
           ) : (
             <div className="grid gap-6">
               {orders.map((order) => {
-                const items = JSON.parse(order.items_json);
+                const items = Array.isArray(order.items_json)
+                  ? order.items_json
+                  : (() => {
+                      try {
+                        return JSON.parse(order.items_json || '[]');
+                      } catch {
+                        return [];
+                      }
+                    })();
                 return (
                   <div key={order.id} className="bg-white/5 border border-white/10 rounded-3xl p-8 hover:bg-white/[0.07] transition-all group">
                     <div className="flex flex-col md:flex-row justify-between gap-6 mb-8">
@@ -1241,7 +1278,7 @@ const ProfilePage = ({ user }: { user: FirebaseUser }) => {
                     <div className="flex flex-wrap gap-4 pt-6 border-t border-white/5">
                       {items.map((item: any, idx: number) => (
                         <div key={idx} className="flex items-center gap-4 bg-black/40 p-3 rounded-2xl border border-white/5">
-                          <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-lg" referrerPolicy="no-referrer" />
+                          <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-lg" referrerPolicy="no-referrer" onError={handleProductImageError} />
                           <div>
                             <p className="text-[10px] font-bold text-white tracking-tight">{item.name}</p>
                             <p className="text-[9px] text-white/40 uppercase tracking-widest">Qty: {item.quantity}</p>
@@ -1270,12 +1307,33 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
 
+  const loadCart = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('cart_items')
+      .select('*')
+      .eq('user_id', userId)
+      .order('added_at', { ascending: false });
+
+    if (error) throw error;
+
+    setCartItems((data || []).map((item) => ({
+      ...item,
+      price: toDisplayPrice(item.price),
+    })));
+  };
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const res = await fetch('/api/products');
-        const data = await res.json();
-        setProducts(data);
+        const { data, error } = await supabase
+          .from('products')
+          .select('*');
+
+        if (error) throw error;
+        setProducts((data || []).map((product) => ({
+          ...product,
+          price: toDisplayPrice(product.price),
+        })));
       } catch (err) {
         console.error("Fetch products error:", err);
       }
@@ -1289,22 +1347,23 @@ export default function App() {
       setIsAuthReady(true);
       
       if (firebaseUser) {
-        // Sync user to SQL Database
+        // Sync Firebase user to Supabase
         try {
-          await fetch('/api/users/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          const { error } = await supabase
+            .from('app_users')
+            .upsert({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
-              displayName: firebaseUser.displayName
-            })
-          });
+              display_name: firebaseUser.displayName
+            });
 
-          // Fetch Cart
-          const response = await fetch(`/api/cart/${firebaseUser.uid}`);
-          const items = await response.json();
-          setCartItems(items);
+          if (error) {
+            console.error('Supabase insert error:', error);
+          } else {
+            console.log('User saved to Supabase ✅');
+          }
+
+          await loadCart(firebaseUser.uid);
         } catch (error) {
           console.error("Sync error:", error);
         }
@@ -1349,51 +1408,86 @@ export default function App() {
 
   const addToCart = async (product: any) => {
     if (!user) {
-      await handleLogin();
+      alert('Login first');
       return;
     }
 
     try {
-      await fetch('/api/cart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.uid,
-          productId: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          category: product.category || product.cat
-        })
-      });
+      const cleanPrice = Number(product.price.toString().replace(/[$,]/g, ''));
+      const productId = Number(String(product.id).replace(/[^0-9]/g, ''));
 
-      // Refresh cart
-      const response = await fetch(`/api/cart/${user.uid}`);
-      const items = await response.json();
-      setCartItems(items);
+      if (Number.isNaN(cleanPrice) || Number.isNaN(productId)) {
+        alert('Invalid product data');
+        return;
+      }
+
+      const { data: existingItems, error: lookupError } = await supabase
+        .from('cart_items')
+        .select('id, quantity')
+        .eq('user_id', user.uid)
+        .eq('product_id', productId)
+        .limit(1);
+
+      if (lookupError) throw lookupError;
+
+      const existing = existingItems?.[0];
+
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from('cart_items')
+          .update({ quantity: existing.quantity + 1 })
+          .eq('id', existing.id);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('cart_items')
+          .insert({
+            user_id: user.uid,
+            product_id: productId,
+            name: product.name,
+            price: cleanPrice,
+            image: product.image,
+            category: product.category || product.cat,
+            quantity: 1
+          });
+
+        if (insertError) throw insertError;
+      }
+
+      await loadCart(user.uid);
       setIsCartOpen(true);
+      alert('Added to bag ✅');
     } catch (error) {
       console.error("Add to cart error:", error);
+      alert('Error adding to cart');
     }
   };
 
   const updateCartQuantity = async (itemId: string, delta: number) => {
     if (!user) return;
-    const item = cartItems.find(i => i.id === itemId);
+    const item = cartItems.find(i => String(i.id) === String(itemId));
     if (!item) return;
 
     const newQuantity = item.quantity + delta;
     try {
-      await fetch(`/api/cart/${itemId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quantity: newQuantity })
-      });
+      if (newQuantity <= 0) {
+        const { error } = await supabase
+          .from('cart_items')
+          .delete()
+          .eq('id', item.id);
 
-      // Refresh cart
-      const response = await fetch(`/api/cart/${user.uid}`);
-      const items = await response.json();
-      setCartItems(items);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('cart_items')
+          .update({ quantity: newQuantity })
+          .eq('id', item.id);
+
+        if (error) throw error;
+      }
+
+      await loadCart(user.uid);
     } catch (error) {
       console.error("Update quantity error:", error);
     }
@@ -1402,12 +1496,14 @@ export default function App() {
   const removeFromCart = async (itemId: string) => {
     if (!user) return;
     try {
-      await fetch(`/api/cart/${itemId}`, { method: 'DELETE' });
-      
-      // Refresh cart
-      const response = await fetch(`/api/cart/${user.uid}`);
-      const items = await response.json();
-      setCartItems(items);
+      const { error } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      await loadCart(user.uid);
     } catch (error) {
       console.error("Remove error:", error);
     }
@@ -1418,20 +1514,31 @@ export default function App() {
     
     try {
       const total = cartItems.reduce((acc, item) => {
-        const price = parseFloat(item.price.replace('$', '').replace(',', ''));
-        return acc + (price * item.quantity);
+        return acc + (toNumericPrice(item.price) * item.quantity);
       }, 0);
 
-      await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.uid,
-          items: cartItems,
+      const { error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user.uid,
+          items_json: JSON.stringify(cartItems),
           total,
-          shippingDetails
+          full_name: shippingDetails.fullName,
+          address: shippingDetails.address,
+          city: shippingDetails.city,
+          zip_code: shippingDetails.zipCode,
+          phone: shippingDetails.phone,
+          status: 'pending'
         })
-      });
+
+      if (orderError) throw orderError;
+
+      const { error: clearError } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('user_id', user.uid);
+
+      if (clearError) throw clearError;
 
       setCartItems([]);
       setIsCartOpen(false);
