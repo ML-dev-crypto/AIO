@@ -111,10 +111,13 @@ const Navbar = ({
         
         {user ? (
           <div className="flex items-center gap-3">
-            <div className="hidden md:block text-right">
-              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none">Welcome</p>
-              <p className="text-xs font-bold text-white tracking-tight">{user.displayName?.split(' ')[0]}</p>
-            </div>
+            <button 
+              onClick={() => onNav('profile')}
+              className="hidden md:block text-right group cursor-pointer"
+            >
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none group-hover:text-white/60 transition-colors">Welcome</p>
+              <p className="text-xs font-bold text-white tracking-tight group-hover:text-white/80 transition-colors">{user.displayName?.split(' ')[0]}</p>
+            </button>
             <button 
               onClick={onLogout}
               className="text-white/40 hover:text-white p-2 transition-colors cursor-pointer"
@@ -1146,6 +1149,108 @@ const AboutPage = () => (
   </section>
 );
 
+const ProfilePage = ({ user }: { user: FirebaseUser }) => {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const res = await fetch(`/api/orders/${user.uid}`);
+        const data = await res.json();
+        setOrders(data);
+      } catch (err) {
+        console.error("Fetch orders error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, [user.uid]);
+
+  return (
+    <section className="pt-32 pb-24 px-6 min-h-screen bg-black">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-8 mb-16">
+          <div>
+            <span className="text-[10px] tracking-[0.5em] font-black uppercase text-white/30 mb-4 block">Account Overview</span>
+            <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tighter uppercase leading-none">
+              {user.displayName}
+            </h1>
+            <p className="text-white/40 text-sm mt-4 font-mono tracking-widest uppercase">{user.email}</p>
+          </div>
+          <div className="flex gap-4">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center min-w-[140px]">
+              <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Orders</p>
+              <p className="text-3xl font-bold text-white">{orders.length}</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center min-w-[140px]">
+              <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Status</p>
+              <p className="text-3xl font-bold text-white uppercase text-xs tracking-widest mt-3">Verified</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-8">
+          <h2 className="text-2xl font-bold text-white uppercase tracking-tighter border-b border-white/10 pb-4">Order History</h2>
+          
+          {loading ? (
+            <div className="py-12 flex justify-center">
+              <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="py-20 text-center bg-white/5 rounded-3xl border border-dashed border-white/10">
+              <p className="text-white/40 uppercase tracking-widest text-xs">No orders found yet.</p>
+            </div>
+          ) : (
+            <div className="grid gap-6">
+              {orders.map((order) => {
+                const items = JSON.parse(order.items_json);
+                return (
+                  <div key={order.id} className="bg-white/5 border border-white/10 rounded-3xl p-8 hover:bg-white/[0.07] transition-all group">
+                    <div className="flex flex-col md:flex-row justify-between gap-6 mb-8">
+                      <div>
+                        <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Order ID</p>
+                        <p className="text-xs font-mono text-white/80">#AIO-{order.id.toString().padStart(6, '0')}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Date</p>
+                        <p className="text-xs text-white/80">{new Date(order.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Status</p>
+                        <span className="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold text-white uppercase tracking-widest">
+                          {order.status}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-1">Total</p>
+                        <p className="text-xl font-bold text-white">${order.total.toLocaleString()}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-4 pt-6 border-t border-white/5">
+                      {items.map((item: any, idx: number) => (
+                        <div key={idx} className="flex items-center gap-4 bg-black/40 p-3 rounded-2xl border border-white/5">
+                          <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-lg" referrerPolicy="no-referrer" />
+                          <div>
+                            <p className="text-[10px] font-bold text-white tracking-tight">{item.name}</p>
+                            <p className="text-[9px] text-white/40 uppercase tracking-widest">Qty: {item.quantity}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+};
+
 export default function App() {
   const [page, setPage] = useState('home');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -1306,8 +1411,8 @@ export default function App() {
       });
 
       setCartItems([]);
-      alert("Order placed successfully! (SQL Database Updated)");
       setIsCartOpen(false);
+      setPage('profile');
     } catch (error) {
       console.error("Checkout error:", error);
     }
@@ -1460,6 +1565,7 @@ export default function App() {
           {page === 'custom' && <CustomShopPage onAddToCart={addToCart} />}
           {page === 'artists' && <ArtistSeriesPage onNav={setPage} />}
           {page === 'about' && <AboutPage />}
+          {page === 'profile' && user && <ProfilePage user={user} />}
         </motion.div>
       </AnimatePresence>
       

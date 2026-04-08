@@ -246,6 +246,12 @@ app.post('/api/checkout', (req, res) => {
   res.json({ success: true });
 });
 
+// Get Orders
+app.get('/api/orders/:userId', (req, res) => {
+  const orders = db.prepare('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC').all(req.params.userId);
+  res.json(orders);
+});
+
 // Vite Middleware
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
