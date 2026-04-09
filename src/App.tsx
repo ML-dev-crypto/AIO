@@ -95,6 +95,13 @@ const Navbar = ({
   isLoggingIn: boolean
 }) => {
   const [scrolled, setScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navItems = [
+    { label: 'Instruments', page: 'instruments' },
+    { label: 'Custom Shop', page: 'custom' },
+    { label: 'Artist Series', page: 'artists' },
+    { label: 'About', page: 'about' },
+  ];
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -102,77 +109,201 @@ const Navbar = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [isMobileMenuOpen]);
+
+  const handleNavigate = (targetPage: string) => {
+    onNav(targetPage);
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleOpenCart = () => {
+    onOpenCart();
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleLogin = () => {
+    onLogin();
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleLogout = () => {
+    onLogout();
+    setIsMobileMenuOpen(false);
+  };
+
   return (
-    <nav className={cn(
-      "fixed top-0 left-0 w-full z-50 transition-all duration-500 px-6 py-4 flex items-center justify-between",
-      scrolled ? "bg-black/80 backdrop-blur-lg border-b border-white/10 py-3" : "bg-transparent"
-    )}>
-      <div className="flex items-center gap-2 cursor-pointer" onClick={() => onNav('home')}>
-        <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-          <Music className="w-5 h-5 text-black" />
-        </div>
-        <span className="font-bold tracking-widest text-white text-xl">AIO.</span>
-      </div>
-      
-      <div className="hidden md:flex items-center gap-8 text-xs font-bold uppercase tracking-widest text-white/70">
-        <button onClick={() => onNav('instruments')} className="hover:text-white transition-colors cursor-pointer">Instruments</button>
-        <button onClick={() => onNav('custom')} className="hover:text-white transition-colors cursor-pointer">Custom Shop</button>
-        <button onClick={() => onNav('artists')} className="hover:text-white transition-colors cursor-pointer">Artist Series</button>
-        <button onClick={() => onNav('about')} className="hover:text-white transition-colors cursor-pointer">About</button>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={onOpenCart}
-          className="text-white hover:bg-white/10 p-2 rounded-full transition-colors cursor-pointer relative"
-        >
-          <ShoppingBag className="w-5 h-5" />
-          {cartCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-white text-black text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-              {cartCount}
-            </span>
-          )}
-        </button>
-        
-        {user ? (
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => onNav('profile')}
-              className="hidden md:block text-right group cursor-pointer"
-            >
-              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none group-hover:text-white/60 transition-colors">Welcome</p>
-              <p className="text-xs font-bold text-white tracking-tight group-hover:text-white/80 transition-colors">{user.displayName?.split(' ')[0]}</p>
-            </button>
-            <button 
-              onClick={onLogout}
-              className="text-white/40 hover:text-white p-2 transition-colors cursor-pointer"
-              title="Logout"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+    <>
+      <nav className={cn(
+        "fixed top-0 left-0 w-full z-50 transition-all duration-500 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between",
+        scrolled ? "bg-black/80 backdrop-blur-lg border-b border-white/10" : "bg-transparent"
+      )}>
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleNavigate('home')}>
+          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+            <Music className="w-5 h-5 text-black" />
           </div>
-        ) : (
-          <button 
-            onClick={onLogin}
-            disabled={isLoggingIn}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoggingIn ? (
-              <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            ) : (
-              <User className="w-4 h-4 text-white" />
-            )}
-            <span className="text-[10px] font-bold uppercase tracking-widest text-white">
-              {isLoggingIn ? 'Logging in...' : 'Login'}
-            </span>
-          </button>
-        )}
+          <span className="font-bold tracking-widest text-white text-lg sm:text-xl">AIO.</span>
+        </div>
+        <div className="hidden md:flex items-center gap-8 text-xs font-bold uppercase tracking-widest text-white/70">
+          {navItems.map((item) => (
+            <button key={item.page} onClick={() => handleNavigate(item.page)} className="hover:text-white transition-colors cursor-pointer">
+              {item.label}
+            </button>
+          ))}
+        </div>
 
-        <button className="md:hidden text-white cursor-pointer">
-          <Menu className="w-6 h-6" />
-        </button>
-      </div>
-    </nav>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <button 
+            onClick={handleOpenCart}
+            className="text-white hover:bg-white/10 p-2 rounded-full transition-colors cursor-pointer relative"
+          >
+            <ShoppingBag className="w-5 h-5" />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-white text-black text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
+          </button>
+          
+          {user ? (
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button 
+                onClick={() => handleNavigate('profile')}
+                className="hidden md:block text-right group cursor-pointer"
+              >
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none group-hover:text-white/60 transition-colors">Welcome</p>
+                <p className="text-xs font-bold text-white tracking-tight group-hover:text-white/80 transition-colors">{user.displayName?.split(' ')[0]}</p>
+              </button>
+              <button 
+                onClick={handleLogout}
+                className="text-white/40 hover:text-white p-2 transition-colors cursor-pointer"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={handleLogin}
+              disabled={isLoggingIn}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoggingIn ? (
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              ) : (
+                <User className="w-4 h-4 text-white" />
+              )}
+              <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-widest text-white">
+                {isLoggingIn ? 'Logging in...' : 'Login'}
+              </span>
+            </button>
+          )}
+
+          <button
+            className="md:hidden text-white cursor-pointer p-1"
+            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+            aria-label={isMobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={isMobileMenuOpen}
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+      </nav>
+
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="md:hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
+              aria-label="Close mobile menu overlay"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -24 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden fixed top-[68px] left-0 right-0 bottom-0 z-40 bg-[#050505] border-t border-white/10 px-5 py-6 overflow-y-auto"
+            >
+              <div className="space-y-2">
+                {navItems.map((item) => (
+                  <button
+                    key={item.page}
+                    onClick={() => handleNavigate(item.page)}
+                    className="w-full text-left px-4 py-3 border border-white/10 rounded-xl text-sm font-bold uppercase tracking-[0.2em] text-white/80 hover:bg-white/5 transition-colors"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+
+                {user && (
+                  <button
+                    onClick={() => handleNavigate('profile')}
+                    className="w-full text-left px-4 py-3 border border-white/10 rounded-xl text-sm font-bold uppercase tracking-[0.2em] text-white/80 hover:bg-white/5 transition-colors"
+                  >
+                    Profile
+                  </button>
+                )}
+              </div>
+
+              <div className="mt-8 border-t border-white/10 pt-6 space-y-3">
+                <button
+                  onClick={handleOpenCart}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm font-bold uppercase tracking-[0.2em] text-white hover:bg-white/10 transition-colors flex items-center justify-between"
+                >
+                  <span>Bag</span>
+                  <span>{cartCount}</span>
+                </button>
+
+                {user ? (
+                  <button
+                    onClick={handleLogout}
+                    className="w-full px-4 py-3 bg-white text-black rounded-xl text-sm font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-2"
+                  >
+                    Logout <LogOut className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleLogin}
+                    disabled={isLoggingIn}
+                    className="w-full px-4 py-3 bg-white text-black rounded-xl text-sm font-bold uppercase tracking-[0.2em] disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isLoggingIn ? 'Logging in...' : 'Login with Google'}
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
@@ -506,7 +637,7 @@ const Cart = ({
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed top-0 right-0 h-full w-full max-w-md bg-[#0a0a0a] border-l border-white/10 z-[101] flex flex-col"
           >
-            <div className="p-8 border-b border-white/10 flex items-center justify-between">
+            <div className="p-5 sm:p-8 border-b border-white/10 flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-black tracking-tighter uppercase">
                   {isCheckingOut ? 'Shipping Details.' : 'Your Bag.'}
@@ -520,7 +651,7 @@ const Cart = ({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-8">
               {!isCheckingOut ? (
                 <div className="space-y-8">
                   {items.length === 0 ? (
@@ -593,7 +724,7 @@ const Cart = ({
                       placeholder="123 Guitar Lane"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black tracking-widest text-white/30 uppercase">City</label>
                       <input 
@@ -637,7 +768,7 @@ const Cart = ({
             </div>
 
             {items.length > 0 && (
-              <div className="p-8 bg-white/5 border-t border-white/10 space-y-6">
+              <div className="p-5 sm:p-8 bg-white/5 border-t border-white/10 space-y-6">
                 <div className="flex justify-between items-end">
                   <p className="text-[10px] font-bold tracking-[0.4em] text-white/30 uppercase">Total</p>
                   <p className="text-3xl font-black tracking-tighter">${total.toLocaleString()}</p>
@@ -673,8 +804,8 @@ const Cart = ({
 };
 
 const Features = () => (
-  <section className="bg-black py-32 px-6">
-    <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-16">
+  <section className="bg-black py-20 md:py-32 px-4 sm:px-6">
+    <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-10 md:gap-16">
       {[
         { icon: ShieldCheck, title: "LIFETIME WARRANTY", desc: "Every instrument is a companion for life. We stand by our craft with unyielding support." },
         { icon: Truck, title: "SECURE TRANSPORT", desc: "Custom-fitted vault cases and climate-controlled shipping for every single order." },
@@ -698,16 +829,16 @@ const ProductDetailPage = ({ product, onAddToCart, onBack }: { product: any, onA
   const specs = product.specifications ? JSON.parse(product.specifications) : {};
 
   return (
-    <section className="bg-[#050505] min-h-screen pt-32 pb-20 px-6">
+    <section className="bg-[#050505] min-h-screen pt-24 md:pt-32 pb-16 md:pb-20 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
         <button 
           onClick={onBack}
-          className="flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-12 text-xs font-bold tracking-widest uppercase cursor-pointer"
+          className="flex items-center gap-2 text-white/40 hover:text-white transition-colors mb-8 md:mb-12 text-xs font-bold tracking-widest uppercase cursor-pointer"
         >
           <X className="w-4 h-4 rotate-45" /> Back to Collection
         </button>
 
-        <div className="grid lg:grid-cols-2 gap-20 items-start">
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-20 items-start">
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -729,8 +860,8 @@ const ProductDetailPage = ({ product, onAddToCart, onBack }: { product: any, onA
           >
             <div>
               <p className="text-xs font-black tracking-[0.3em] text-white/30 uppercase mb-4">{product.category}</p>
-              <h1 className="text-6xl font-black tracking-tighter uppercase mb-6 leading-none">{product.name}</h1>
-              <p className="text-3xl font-light text-white/60 italic">{product.price}</p>
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter uppercase mb-4 md:mb-6 leading-none">{product.name}</h1>
+              <p className="text-2xl md:text-3xl font-light text-white/60 italic">{product.price}</p>
             </div>
 
             <div className="space-y-6">
@@ -742,7 +873,7 @@ const ProductDetailPage = ({ product, onAddToCart, onBack }: { product: any, onA
 
             <div className="space-y-6">
               <h3 className="text-[10px] font-black tracking-widest text-white/40 uppercase">Specifications</h3>
-              <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8">
                 {Object.entries(specs).map(([key, val]) => (
                   <div key={key} className="border-b border-white/5 pb-2">
                     <p className="text-[9px] font-bold text-white/20 uppercase mb-1">{key}</p>
@@ -754,12 +885,12 @@ const ProductDetailPage = ({ product, onAddToCart, onBack }: { product: any, onA
 
             <button 
               onClick={() => onAddToCart(product)}
-              className="w-full bg-white text-black py-6 rounded-full font-black tracking-widest uppercase text-sm hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-3"
+              className="w-full bg-white text-black py-4 md:py-6 rounded-full font-black tracking-widest uppercase text-sm hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-3"
             >
               Add to Bag <ShoppingBag className="w-5 h-5" />
             </button>
 
-            <div className="grid grid-cols-3 gap-4 pt-10 border-t border-white/5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-8 md:pt-10 border-t border-white/5">
               <div className="text-center">
                 <Truck className="w-5 h-5 text-white/20 mx-auto mb-2" />
                 <p className="text-[8px] font-bold text-white/30 uppercase">Free Shipping</p>
@@ -781,9 +912,9 @@ const ProductDetailPage = ({ product, onAddToCart, onBack }: { product: any, onA
 };
 
 const Footer = () => (
-  <footer className="bg-[#080808] border-t border-white/5 pt-20 pb-10 px-6">
+  <footer className="bg-[#080808] border-t border-white/5 pt-16 md:pt-20 pb-10 px-4 sm:px-6">
     <div className="max-w-7xl mx-auto">
-      <div className="grid md:grid-cols-4 gap-12 mb-20">
+      <div className="grid md:grid-cols-4 gap-10 md:gap-12 mb-14 md:mb-20">
         <div className="col-span-1 md:col-span-2">
           <div className="flex items-center gap-2 mb-8">
             <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
@@ -791,7 +922,7 @@ const Footer = () => (
             </div>
             <span className="font-bold tracking-widest text-white text-2xl uppercase">All In One.</span>
           </div>
-          <p className="text-white/40 max-w-sm font-light leading-loose text-lg mb-8 italic">
+          <p className="text-white/40 max-w-sm font-light leading-loose text-base md:text-lg mb-8 italic">
             "We don't just sell guitars; we curate the resonance between the musician and the machine."
           </p>
           <div className="flex gap-4">
@@ -824,9 +955,9 @@ const Footer = () => (
           </div>
         </div>
       </div>
-      <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 text-[10px] tracking-[0.3em] font-bold text-white/20 uppercase">
+      <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 text-[9px] sm:text-[10px] tracking-[0.18em] sm:tracking-[0.3em] font-bold text-white/20 uppercase">
         <p>&copy; 2025 ALL IN ONE GUITAR SHOP. EST. 1994.</p>
-        <div className="flex gap-8">
+        <div className="flex gap-5 sm:gap-8">
           <a href="#" className="hover:text-white transition-colors">Privacy</a>
           <a href="#" className="hover:text-white transition-colors">Terms</a>
           <a href="#" className="hover:text-white transition-colors">Shipping</a>
@@ -846,19 +977,19 @@ const InstrumentsPage = ({ onAddToCart, products, onProductClick }: { onAddToCar
     : products.filter(i => i.category === active.toLowerCase());
 
   return (
-    <section className="bg-[#050505] min-h-screen pt-24">
+    <section className="bg-[#050505] min-h-screen pt-20 md:pt-24">
       {/* Page Header */}
-      <div className="px-10 pt-10 pb-0">
+      <div className="px-4 sm:px-10 pt-8 sm:pt-10 pb-0">
         <span className="text-[9px] font-black tracking-[0.4em] uppercase text-white/30">
           The Collection
         </span>
-        <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white mt-2">
+        <h1 className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter text-white mt-2">
           INSTRUMENTS.
         </h1>
       </div>
 
       {/* Filter Bar */}
-      <div className="flex gap-3 px-10 py-8 flex-wrap">
+      <div className="flex gap-3 px-4 sm:px-10 py-6 sm:py-8 flex-wrap">
         {FILTERS.map(f => (
           <button
             key={f}
@@ -876,7 +1007,7 @@ const InstrumentsPage = ({ onAddToCart, products, onProductClick }: { onAddToCar
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-[2px] px-10 pb-20">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-[2px] px-4 sm:px-10 pb-16 sm:pb-20">
         <AnimatePresence mode="popLayout">
           {filtered.map((inst, i) => (
             <ProductCard 
@@ -956,10 +1087,10 @@ const CustomShopPage = ({ onAddToCart }: { onAddToCart: (product: any) => void }
   );
 
   return (
-    <section className="bg-[#050505] min-h-screen pt-24">
+    <section className="bg-[#050505] min-h-screen pt-20 md:pt-24">
       {/* Hero */}
       <div
-        className="relative h-64 flex items-end px-10 pb-10 overflow-hidden"
+        className="relative h-56 sm:h-64 flex items-end px-4 sm:px-10 pb-8 sm:pb-10 overflow-hidden"
         style={{ background: 'linear-gradient(to bottom, #080808, #050505)' }}
       >
         <div
@@ -973,7 +1104,7 @@ const CustomShopPage = ({ onAddToCart }: { onAddToCart: (product: any) => void }
           <p className="text-[9px] font-black tracking-[0.4em] uppercase text-white/40 mb-3">
             Configure Your Instrument
           </p>
-          <h1 className="text-6xl md:text-7xl font-black tracking-tighter text-white leading-none">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter text-white leading-none">
             BUILT.<br /><span className="text-white/20">FOR YOU.</span>
           </h1>
         </div>
@@ -982,7 +1113,7 @@ const CustomShopPage = ({ onAddToCart }: { onAddToCart: (product: any) => void }
       {/* Configurator Grid */}
       <div className="grid md:grid-cols-2 gap-[2px]">
         {/* Left: Options */}
-        <div className="bg-[#0d0d0d] p-10">
+        <div className="bg-[#0d0d0d] p-6 sm:p-10">
           <ConfigSection label="Body Style">
             {BODY_STYLES.map(s => (
               <Opt key={s} active={body === s} onClick={() => setBody(s)}>{s}</Opt>
@@ -1030,7 +1161,7 @@ const CustomShopPage = ({ onAddToCart }: { onAddToCart: (product: any) => void }
         </div>
 
         {/* Right: Summary */}
-        <div className="bg-[#080808] p-10 flex flex-col justify-between min-h-[560px]">
+        <div className="bg-[#080808] p-6 sm:p-10 flex flex-col justify-between min-h-[460px] md:min-h-[560px]">
           <div>
             <p className="text-[9px] font-black tracking-[0.4em] uppercase text-white/30 mb-8">Your Build</p>
             {[
@@ -1050,7 +1181,7 @@ const CustomShopPage = ({ onAddToCart }: { onAddToCart: (product: any) => void }
 
           <div>
             <p className="text-[9px] font-black tracking-[0.3em] uppercase text-white/30 mb-2">Total</p>
-            <p className="text-5xl font-black tracking-tighter mb-1">${total.toLocaleString()}</p>
+            <p className="text-4xl sm:text-5xl font-black tracking-tighter mb-1">${total.toLocaleString()}</p>
             <p className="text-[9px] tracking-widest text-white/20 uppercase mb-6">Base price from $2,199</p>
             <button 
               onClick={handleBuildAddToCart}
@@ -1082,9 +1213,9 @@ const ARTIST_ROSTER = [
 ];
 
 const ArtistSeriesPage = ({ onNav }: { onNav: (page: string) => void }) => (
-  <section className="bg-[#050505] min-h-screen pt-20">
+  <section className="bg-[#050505] min-h-screen pt-16 md:pt-20">
     {/* Featured Hero */}
-    <div className="relative h-[70vh] overflow-hidden group">
+    <div className="relative h-[56vh] md:h-[70vh] overflow-hidden group">
       <img
         src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=2070&auto=format&fit=crop"
         alt="Featured Artist"
@@ -1092,22 +1223,22 @@ const ArtistSeriesPage = ({ onNav }: { onNav: (page: string) => void }) => (
         className="w-full h-full object-cover brightness-[0.28] group-hover:scale-105 transition-transform duration-[2s]"
       />
       <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-transparent" />
-      <div className="absolute inset-0 flex flex-col justify-end px-10 pb-12">
+      <div className="absolute inset-0 flex flex-col justify-end px-4 sm:px-10 pb-8 sm:pb-12">
         <div className="inline-flex items-center gap-2 border border-white/20 rounded-full px-4 py-2 w-fit mb-5">
           <span className="text-[8px] font-black tracking-[0.4em] uppercase text-white/50">
             Featured Series 2026
           </span>
         </div>
-        <h2 className="text-7xl md:text-9xl font-black tracking-tighter leading-none mb-5">
+        <h2 className="text-5xl sm:text-7xl md:text-9xl font-black tracking-tighter leading-none mb-4 sm:mb-5">
           ELENA<br />VOSS.
         </h2>
-        <p className="text-base text-white/50 max-w-lg font-light leading-relaxed mb-6">
+        <p className="text-sm sm:text-base text-white/50 max-w-md sm:max-w-lg font-light leading-relaxed mb-6">
           Signature EV-1 model — crafted from Ethiopian rosewood with custom-wound single coils. 
           Limited to 200 pieces worldwide.
         </p>
         <button 
           onClick={() => onNav('instruments')}
-          className="inline-flex items-center gap-3 px-7 py-3.5 bg-white text-black text-[10px] font-black tracking-[0.25em] uppercase rounded-full w-fit hover:bg-white/85 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-3 px-6 sm:px-7 py-3 bg-white text-black text-[10px] font-black tracking-[0.2em] sm:tracking-[0.25em] uppercase rounded-full w-fit hover:bg-white/85 transition-colors cursor-pointer"
         >
           View Signature Guitar <ChevronRight className="w-4 h-4" />
         </button>
@@ -1124,13 +1255,13 @@ const ArtistSeriesPage = ({ onNav }: { onNav: (page: string) => void }) => (
           viewport={{ once: true }}
           transition={{ delay: i * 0.08 }}
           onClick={() => onNav('instruments')}
-          className="grid items-center bg-[#0a0a0a] hover:bg-[#111] transition-colors cursor-pointer"
-          style={{ gridTemplateColumns: '80px 1fr auto', gap: 0, marginBottom: '2px' }}
+          className="grid grid-cols-[56px_1fr] md:grid-cols-[80px_1fr_auto] items-center bg-[#0a0a0a] hover:bg-[#111] transition-colors cursor-pointer"
+          style={{ gap: 0, marginBottom: '2px' }}
         >
-          <div className="py-7 px-6 text-[11px] font-black tracking-widest text-white/20 border-r border-white/5 text-center">
+          <div className="py-5 md:py-7 px-3 md:px-6 text-[10px] md:text-[11px] font-black tracking-widest text-white/20 border-r border-white/5 text-center">
             {artist.id}
           </div>
-          <div className="flex items-center gap-6 px-8 py-6">
+          <div className="flex items-center gap-4 md:gap-6 px-4 md:px-8 py-4 md:py-6">
             <img
               src={artist.img}
               alt={artist.name}
@@ -1138,14 +1269,14 @@ const ArtistSeriesPage = ({ onNav }: { onNav: (page: string) => void }) => (
               className="w-12 h-12 rounded-full object-cover grayscale hover:grayscale-0 transition-all"
             />
             <div>
-              <h3 className="text-xl font-black tracking-tight">{artist.name}</h3>
+              <h3 className="text-lg md:text-xl font-black tracking-tight">{artist.name}</h3>
               <p className="text-[9px] font-black tracking-[0.3em] uppercase text-white/30 mt-1">
                 {artist.genre}
               </p>
               <p className="text-xs text-white/25 italic mt-1">{artist.guitar}</p>
             </div>
           </div>
-          <div className="pr-8">
+          <div className="pr-8 hidden md:block">
             <span className="px-4 py-1.5 border border-white/10 rounded-full text-[9px] font-black tracking-widest uppercase text-white/30">
               View Series
             </span>
@@ -1157,16 +1288,16 @@ const ArtistSeriesPage = ({ onNav }: { onNav: (page: string) => void }) => (
 );
 
 const AboutPage = () => (
-  <section className="bg-[#050505] min-h-screen pt-32 px-10">
+  <section className="bg-[#050505] min-h-screen pt-24 md:pt-32 px-4 sm:px-10">
     <div className="max-w-4xl">
       <span className="text-[9px] font-black tracking-[0.4em] uppercase text-white/30">
         Our Story
       </span>
-      <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white mt-2 mb-12">
+      <h1 className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter text-white mt-2 mb-8 md:mb-12">
         EST. 1994.
       </h1>
-      <div className="grid md:grid-cols-2 gap-16">
-        <p className="text-xl text-white/60 font-light leading-relaxed italic">
+      <div className="grid md:grid-cols-2 gap-10 md:gap-16">
+        <p className="text-lg sm:text-xl text-white/60 font-light leading-relaxed italic">
           "What started as a small workshop in a garage has grown into a global destination for musicians who demand the absolute best. We don't just sell guitars; we curate the resonance between the musician and the machine."
         </p>
         <div className="space-y-8 text-white/40 font-light leading-loose">
@@ -1590,7 +1721,7 @@ export default function App() {
               <Hero />
 
               {/* Intro Narrative Section */}
-              <section className="py-32 bg-[#050505] px-6 relative overflow-hidden">
+              <section className="py-20 md:py-32 bg-[#050505] px-4 sm:px-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-1/3 h-full opacity-10 pointer-events-none">
                     <div className="w-full h-full bg-[radial-gradient(circle_at_center,_white_1px,_transparent_1px)] bg-[size:40px_40px]" />
                 </div>
@@ -1605,10 +1736,10 @@ export default function App() {
                     <span className="inline-block px-4 py-1 rounded-full border border-white/20 text-[10px] tracking-[0.4em] uppercase font-bold mb-10 text-white/60">
                       The Philosophy
                     </span>
-                    <h2 className="text-5xl md:text-7xl font-bold tracking-tighter mb-10 text-white leading-[0.9]">
+                    <h2 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tighter mb-8 md:mb-10 text-white leading-[0.9]">
                       PURE SOUND. <br/> <span className="text-white/20">NO COMPROMISE.</span>
                     </h2>
-                    <p className="text-xl md:text-2xl text-white/60 font-light leading-relaxed italic max-w-2xl mx-auto">
+                    <p className="text-lg md:text-2xl text-white/60 font-light leading-relaxed italic max-w-2xl mx-auto">
                       "We believe that the perfect guitar is more than an instrument; it's the extension of your soul. Our shop is built on the singular mission of curating that connection."
                     </p>
                   </motion.div>
@@ -1616,12 +1747,12 @@ export default function App() {
               </section>
 
               {/* Product Grid */}
-              <section className="py-24 px-6 bg-black">
+              <section className="py-16 md:py-24 px-4 sm:px-6 bg-black">
                 <div className="max-w-7xl mx-auto">
                   <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
                     <div>
                       <span className="text-[10px] tracking-[0.5em] font-black uppercase text-white/30 mb-4 block">New Arrivals</span>
-                      <h2 className="text-4xl font-bold text-white uppercase tracking-tighter">The Curated Batch.</h2>
+                      <h2 className="text-3xl sm:text-4xl font-bold text-white uppercase tracking-tighter">The Curated Batch.</h2>
                     </div>
                     <button 
                       onClick={() => setPage('instruments')}
@@ -1631,7 +1762,7 @@ export default function App() {
                     </button>
                   </div>
                   
-                  <div className="grid md:grid-cols-3 gap-10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-10">
                     {products.slice(0, 3).map(product => (
                       <ProductCard 
                         key={product.id} 
@@ -1648,24 +1779,24 @@ export default function App() {
               </section>
 
               {/* Featured Artist Promo */}
-              <section className="h-[70vh] relative overflow-hidden group">
+              <section className="h-[56vh] md:h-[70vh] relative overflow-hidden group">
                 <img 
                   src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=2070&auto=format&fit=crop" 
                   className="w-full h-full object-cover grayscale opacity-40 group-hover:scale-105 transition-transform duration-[2s]"
                   alt="Artist Studio"
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent flex items-center px-12">
+                <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent flex items-center px-4 sm:px-12">
                   <div className="max-w-2xl">
-                    <h3 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-none tracking-tighter">
+                    <h3 className="text-3xl sm:text-4xl md:text-6xl font-bold text-white mb-4 sm:mb-6 leading-none tracking-tighter">
                       BEYOND THE <br /> <span className="italic font-light">STRINGS.</span>
                     </h3>
-                    <p className="text-white/60 text-lg mb-10 max-w-md font-light leading-relaxed">
+                    <p className="text-white/60 text-base md:text-lg mb-8 sm:mb-10 max-w-md font-light leading-relaxed">
                       Join the guild. Access masterclasses, tone-shaping workshops, and limited edition collaboration drops.
                     </p>
                     <button 
                       onClick={() => setPage('artists')}
-                      className="px-10 py-4 bg-white text-black font-bold uppercase tracking-widest text-xs rounded-full hover:bg-white/90 transition-all flex items-center gap-4 cursor-pointer"
+                      className="px-7 sm:px-10 py-3 sm:py-4 bg-white text-black font-bold uppercase tracking-widest text-xs rounded-full hover:bg-white/90 transition-all flex items-center gap-3 sm:gap-4 cursor-pointer"
                     >
                       Join the Guild <ChevronRight className="w-4 h-4" />
                     </button>
