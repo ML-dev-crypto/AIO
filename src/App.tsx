@@ -670,8 +670,13 @@ const Cart = ({
                             <div className="flex justify-between items-start">
                               <h3 className="text-sm font-bold tracking-tight">{item.name}</h3>
                               <button 
-                                onClick={() => onRemove(item.id)}
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onRemove(String(item.id));
+                                }}
                                 className="text-white/20 hover:text-red-500 transition-colors cursor-pointer"
+                                aria-label={`Remove ${item.name} from bag`}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -682,15 +687,25 @@ const Cart = ({
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-3 bg-white/5 rounded-full px-3 py-1 border border-white/5">
                               <button 
-                                onClick={() => onUpdateQuantity(item.id, -1)}
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onUpdateQuantity(String(item.id), -1);
+                                }}
                                 className="p-1 hover:text-white text-white/40 transition-colors cursor-pointer"
+                                aria-label={`Decrease quantity of ${item.name}`}
                               >
                                 <Minus className="w-3 h-3" />
                               </button>
                               <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
                               <button 
-                                onClick={() => onUpdateQuantity(item.id, 1)}
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onUpdateQuantity(String(item.id), 1);
+                                }}
                                 className="p-1 hover:text-white text-white/40 transition-colors cursor-pointer"
+                                aria-label={`Increase quantity of ${item.name}`}
                               >
                                 <Plus className="w-3 h-3" />
                               </button>
@@ -1449,6 +1464,8 @@ export default function App() {
 
     setCartItems((data || []).map((item) => ({
       ...item,
+      id: String(item.id),
+      quantity: Number(item.quantity) || 1,
       price: toDisplayPrice(item.price),
     })));
   };
@@ -1564,10 +1581,12 @@ export default function App() {
       const existing = existingItems?.[0];
 
       if (existing) {
+        const existingQuantity = Number(existing.quantity) || 0;
         const { error: updateError } = await supabase
           .from('cart_items')
-          .update({ quantity: existing.quantity + 1 })
-          .eq('id', existing.id);
+          .update({ quantity: existingQuantity + 1 })
+          .eq('id', String(existing.id))
+          .eq('user_id', user.uid);
 
         if (updateError) throw updateError;
       } else {
@@ -1600,20 +1619,23 @@ export default function App() {
     const item = cartItems.find(i => String(i.id) === String(itemId));
     if (!item) return;
 
-    const newQuantity = item.quantity + delta;
+    const currentQuantity = Number(item.quantity) || 0;
+    const newQuantity = currentQuantity + delta;
     try {
       if (newQuantity <= 0) {
         const { error } = await supabase
           .from('cart_items')
           .delete()
-          .eq('id', item.id);
+          .eq('id', String(item.id))
+          .eq('user_id', user.uid);
 
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('cart_items')
           .update({ quantity: newQuantity })
-          .eq('id', item.id);
+          .eq('id', String(item.id))
+          .eq('user_id', user.uid);
 
         if (error) throw error;
       }
@@ -1621,6 +1643,7 @@ export default function App() {
       await loadCart(user.uid);
     } catch (error) {
       console.error("Update quantity error:", error);
+      alert('Could not update item quantity. Please try again.');
     }
   };
 
@@ -1630,13 +1653,15 @@ export default function App() {
       const { error } = await supabase
         .from('cart_items')
         .delete()
-        .eq('id', itemId);
+        .eq('id', String(itemId))
+        .eq('user_id', user.uid);
 
       if (error) throw error;
 
       await loadCart(user.uid);
     } catch (error) {
       console.error("Remove error:", error);
+      alert('Could not remove item from bag. Please try again.');
     }
   };
 
