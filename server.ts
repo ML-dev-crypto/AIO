@@ -3,6 +3,11 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import Database from 'better-sqlite3';
 import cors from 'cors';
+import dotenv from 'dotenv';
+import sendEmailHandler from './api/send-email';
+
+dotenv.config({ path: '.env.local' });
+dotenv.config();
 
 const app = express();
 const PORT = 3000;
@@ -251,6 +256,9 @@ app.post('/api/checkout', (req, res) => {
   db.prepare('DELETE FROM cart_items WHERE user_id = ?').run(userId);
   res.json({ success: true });
 });
+
+// Send invoice email with PDF attachment
+app.post('/api/send-email', sendEmailHandler);
 
 // Get Orders
 app.get('/api/orders/:userId', (req, res) => {

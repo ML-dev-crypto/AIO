@@ -1664,6 +1664,28 @@ export default function App() {
 
       if (orderError) throw orderError;
 
+      if (user.email) {
+        try {
+          const emailResponse = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: user.email,
+              name: user.displayName || shippingDetails.fullName || 'User',
+              items: cartItems,
+              total,
+            }),
+          });
+
+          if (!emailResponse.ok) {
+            const emailErrorText = await emailResponse.text();
+            console.error('Invoice email failed:', emailErrorText);
+          }
+        } catch (emailError) {
+          console.error('Invoice email error:', emailError);
+        }
+      }
+
       const { error: clearError } = await supabase
         .from('cart_items')
         .delete()
