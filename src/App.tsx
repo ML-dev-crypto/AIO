@@ -72,6 +72,44 @@ const toDisplayPrice = (value: unknown) => {
   return '$0';
 };
 
+type CartItem = {
+  id: string;
+  product_id?: number | string;
+  user_id?: string;
+  name: string;
+  price: string | number;
+  image: string;
+  category: string;
+  quantity: number;
+};
+
+type ShippingDetails = {
+  fullName: string;
+  address: string;
+  city: string;
+  zipCode: string;
+  phone: string;
+};
+
+type ProductLike = {
+  id?: number | string;
+  product_id?: number | string;
+  name: string;
+  price: string | number;
+  image: string;
+  category?: string;
+  cat?: string;
+};
+
+const normalizeProductId = (value: unknown): number | null => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string') {
+    const numeric = Number(value.replace(/[^0-9]/g, ''));
+    return Number.isNaN(numeric) ? null : numeric;
+  }
+  return null;
+};
+
 // --- CONSTANTS ---
 const WORDS = ["ALL", "IN", "ONE", "GUITAR", "SHOP"];
 
@@ -596,13 +634,13 @@ const Cart = ({
 }: { 
   isOpen: boolean, 
   onClose: () => void, 
-  items: any[], 
-  onUpdateQuantity: (id: string, delta: number) => void, 
-  onRemove: (id: string) => void,
-  onCheckout: (details: any) => void
+  items: CartItem[], 
+  onUpdateQuantity: (itemId: string, delta: number) => void, 
+  onRemove: (itemId: string) => void,
+  onCheckout: (details: ShippingDetails) => void
 }) => {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [shippingDetails, setShippingDetails] = useState({
+  const [shippingDetails, setShippingDetails] = useState<ShippingDetails>({
     fullName: '',
     address: '',
     city: '',
@@ -660,8 +698,10 @@ const Cart = ({
                       <p className="text-xs font-bold tracking-widest uppercase">Your bag is empty</p>
                     </div>
                   ) : (
-                    items.map((item) => (
-                      <div key={item.id} className="flex gap-6 group">
+                    items.map((item) => {
+                      const itemId = String(item.id);
+                      return (
+                      <div key={itemId} className="flex gap-6 group">
                         <div className="w-24 h-32 bg-[#111] rounded-lg overflow-hidden flex-shrink-0">
                           <img src={item.image} alt={item.name} onError={handleProductImageError} className="w-full h-full object-cover" />
                         </div>
@@ -673,7 +713,7 @@ const Cart = ({
                                 type="button"
                                 onClick={(event) => {
                                   event.stopPropagation();
-                                  onRemove(String(item.id));
+                                  onRemove(itemId);
                                 }}
                                 className="text-white/20 hover:text-red-500 transition-colors cursor-pointer"
                                 aria-label={`Remove ${item.name} from bag`}
@@ -690,7 +730,7 @@ const Cart = ({
                                 type="button"
                                 onClick={(event) => {
                                   event.stopPropagation();
-                                  onUpdateQuantity(String(item.id), -1);
+                                  onUpdateQuantity(itemId, -1);
                                 }}
                                 className="p-1 hover:text-white text-white/40 transition-colors cursor-pointer"
                                 aria-label={`Decrease quantity of ${item.name}`}
@@ -702,7 +742,7 @@ const Cart = ({
                                 type="button"
                                 onClick={(event) => {
                                   event.stopPropagation();
-                                  onUpdateQuantity(String(item.id), 1);
+                                  onUpdateQuantity(itemId, 1);
                                 }}
                                 className="p-1 hover:text-white text-white/40 transition-colors cursor-pointer"
                                 aria-label={`Increase quantity of ${item.name}`}
@@ -714,7 +754,8 @@ const Cart = ({
                           </div>
                         </div>
                       </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               ) : (
@@ -1447,7 +1488,7 @@ export default function App() {
   const [page, setPage] = useState('home');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -1462,12 +1503,19 @@ export default function App() {
 
     if (error) throw error;
 
-    setCartItems((data || []).map((item) => ({
-      ...item,
-      id: String(item.id),
-      quantity: Number(item.quantity) || 1,
-      price: toDisplayPrice(item.price),
-    })));
+    setCartItems((data || []).map((item): CartItem => {
+      const id = String(item.id ?? '');
+      return {
+        id,
+        product_id: item.product_id,
+        user_id: item.user_id,
+        name: String(item.name ?? 'Item'),
+        price: toDisplayPrice(item.price),
+        image: String(item.image ?? ''),
+        category: String(item.category ?? ''),
+        quantity: Number(item.quantity) || 1,
+      };
+    }));
   };
 
   useEffect(() => {
@@ -1554,58 +1602,64 @@ export default function App() {
     }
   };
 
-  const addToCart = async (product: any) => {
-    if (!user) {
+  const addToCart = async (product: ProductLike) => {
+    const activeUser = auth.currentUser ?? user;
+    if (!activeUser) {
       alert('Login first');
       return;
     }
 
     try {
       const cleanPrice = Number(product.price.toString().replace(/[$,]/g, ''));
-      const productId = Number(String(product.id).replace(/[^0-9]/g, ''));
+      const rawProductId = product.product_id ?? product.id;
+      const normalizedProductId = normalizeProductId(rawProductId);
 
-      if (Number.isNaN(cleanPrice) || Number.isNaN(productId)) {
+      if (Number.isNaN(cleanPrice) || normalizedProductId === null) {
         alert('Invalid product data');
         return;
       }
 
-      const { data: existingItems, error: lookupError } = await supabase
+      const { data, error: lookupError } = await supabase
         .from('cart_items')
         .select('id, quantity')
-        .eq('user_id', user.uid)
-        .eq('product_id', productId)
-        .limit(1);
+        .eq('user_id', activeUser.uid)
+        .eq('product_id', normalizedProductId);
 
       if (lookupError) throw lookupError;
 
-      const existing = existingItems?.[0];
+      const existing = (data && data.length > 0) ? data[0] : null;
 
       if (existing) {
         const existingQuantity = Number(existing.quantity) || 0;
+        const existingId = Number(existing.id);
+        if (!Number.isFinite(existingId)) {
+          throw new Error('Invalid existing cart row id');
+        }
+
         const { error: updateError } = await supabase
           .from('cart_items')
           .update({ quantity: existingQuantity + 1 })
-          .eq('id', String(existing.id))
-          .eq('user_id', user.uid);
+          .eq('id', existingId)
+          .eq('user_id', activeUser.uid);
 
         if (updateError) throw updateError;
       } else {
         const { error: insertError } = await supabase
           .from('cart_items')
           .insert({
-            user_id: user.uid,
-            product_id: productId,
+            user_id: activeUser.uid,
+            product_id: normalizedProductId,
             name: product.name,
             price: cleanPrice,
             image: product.image,
-            category: product.category || product.cat,
+            category: product.category || product.cat || 'General',
             quantity: 1
           });
 
         if (insertError) throw insertError;
       }
 
-      await loadCart(user.uid);
+      await loadCart(activeUser.uid);
       setIsCartOpen(true);
       alert('Added to bag ✅');
     } catch (error) {
@@ -1616,8 +1670,11 @@ export default function App() {
 
   const updateCartQuantity = async (itemId: string, delta: number) => {
     if (!user) return;
-    const item = cartItems.find(i => String(i.id) === String(itemId));
+    const item = cartItems.find((entry) => String(entry.id) === String(itemId));
     if (!item) return;
+
+    const targetRowId = Number(item.id);
+    if (!Number.isFinite(targetRowId)) return;
 
     const currentQuantity = Number(item.quantity) || 0;
     const newQuantity = currentQuantity + delta;
@@ -1626,16 +1683,16 @@ export default function App() {
         const { error } = await supabase
           .from('cart_items')
           .delete()
-          .eq('id', String(item.id))
-          .eq('user_id', user.uid);
+          .eq('user_id', user.uid)
+          .eq('id', targetRowId);
 
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('cart_items')
           .update({ quantity: newQuantity })
-          .eq('id', String(item.id))
-          .eq('user_id', user.uid);
+          .eq('user_id', user.uid)
+          .eq('id', targetRowId);
 
         if (error) throw error;
       }
@@ -1649,12 +1706,18 @@ export default function App() {
 
   const removeFromCart = async (itemId: string) => {
     if (!user) return;
+    const item = cartItems.find((entry) => String(entry.id) === String(itemId));
+    if (!item) return;
+
+    const targetRowId = String(item.id ?? '');
+    if (!targetRowId) return;
+
     try {
       const { error } = await supabase
         .from('cart_items')
         .delete()
-        .eq('id', String(itemId))
-        .eq('user_id', user.uid);
+        .eq('user_id', user.uid)
+        .eq('id', targetRowId);
 
       if (error) throw error;
 
@@ -1665,7 +1728,7 @@ export default function App() {
     }
   };
 
-  const handleCheckout = async (shippingDetails: any) => {
+  const handleCheckout = async (shippingDetails: ShippingDetails) => {
     if (!user || cartItems.length === 0) return;
     
     try {
