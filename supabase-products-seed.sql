@@ -1,4 +1,6 @@
 -- Replace current product catalog with the app's existing guitar products.
+alter table products add column if not exists artist text;
+
 delete from products;
 
 insert into products (name, price, category, image, badge)
@@ -9,3 +11,10 @@ values
   ('Obsidian Bass IV', 1650, 'bass', 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=1200&auto=format&fit=crop', 'New'),
   ('Sunburst 59 Reissue', 4800, 'vintage', 'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?q=80&w=1200&auto=format&fit=crop', 'Limited'),
   ('Nylon Classic Grand', 2100, 'classical', 'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?q=80&w=1200&auto=format&fit=crop', '');
+
+-- Artist slug mapping (based on current ids in your database)
+update products set artist = 'elena-voss' where id = 7;
+update products set artist = 'marcus-steele' where id = 8;
+update products set artist = 'priya-anand' where id = 3;
+update products set artist = 'dario-ferretti' where id = 4;
+update products set artist = 'kira-nomura' where id = 5;

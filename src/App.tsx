@@ -12,6 +12,8 @@ import {
   X, 
   ChevronRight, 
   Music, 
+  CheckCircle2,
+  Guitar,
   ShieldCheck, 
   Truck, 
   RotateCcw,
@@ -70,6 +72,43 @@ const toDisplayPrice = (value: unknown) => {
     return value;
   }
   return '$0';
+};
+
+const SmartImage = ({
+  src,
+  alt,
+  className,
+  type = 'photo',
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  type?: 'photo' | 'guitar';
+}) => {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className={`${className} bg-zinc-900 flex flex-col items-center justify-center p-12 border border-white/5`}>
+        {type === 'guitar' ? (
+          <Guitar className="w-16 h-16 text-white/10 mb-4 animate-pulse" strokeWidth={1} />
+        ) : (
+          <Music className="w-16 h-16 text-white/10 mb-4 animate-pulse" strokeWidth={1} />
+        )}
+        <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">Signature Asset</p>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setFailed(true)}
+      className={`${className} bg-zinc-900`}
+      referrerPolicy="no-referrer"
+    />
+  );
 };
 
 type CartItem = {
@@ -1256,19 +1295,33 @@ const CustomShopPage = ({ onAddToCart }: { onAddToCart: (product: any) => void }
 };
 
 const ARTIST_ROSTER = [
-  { id: "01", name: "Elena Voss", genre: "Post-Rock", guitar: "EV-1 Signature",
+  { id: "01", slug: 'elena-voss', name: "Elena Voss", genre: "Post-Rock", guitar: "EV-1 Signature", productId: 7,
     img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop" },
-  { id: "02", name: "Marcus Steele", genre: "Jazz Fusion", guitar: "MS-7 Archtop",
+  { id: "02", slug: 'marcus-steele', name: "Marcus Steele", genre: "Jazz Fusion", guitar: "MS-7 Archtop", productId: 8,
     img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" },
-  { id: "03", name: "Priya Anand", genre: "Indie / Folk", guitar: "PA Acoustic Custom",
+  { id: "03", slug: 'priya-anand', name: "Priya Anand", genre: "Indie / Folk", guitar: "PA Acoustic Custom", productId: 3,
     img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop" },
-  { id: "04", name: "Dario Ferretti", genre: "Flamenco", guitar: "DF Nylon Series",
+  { id: "04", slug: 'dario-ferretti', name: "Dario Ferretti", genre: "Flamenco", guitar: "DF Nylon Series", productId: 4,
     img: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=120&auto=format&fit=crop" },
-  { id: "05", name: "Kira Nomura", genre: "Progressive Metal", guitar: "KN-X7 Extended",
+  { id: "05", slug: 'kira-nomura', name: "Kira Nomura", genre: "Progressive Metal", guitar: "KN-X7 Extended", productId: 5,
     img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=120&auto=format&fit=crop" },
 ];
 
-const ArtistSeriesPage = ({ onNav }: { onNav: (page: string) => void }) => (
+const ARTIST_QUOTES: Record<string, string> = {
+  'elena-voss': "Sound isn't just what you hear-it's the architecture of the space you inhabit.",
+  'marcus-steele': 'Every note should breathe, even inside the fastest run.',
+  'priya-anand': 'A melody is strongest when silence surrounds it.',
+  'dario-ferretti': 'Rhythm begins in the hand before it reaches the string.',
+  'kira-nomura': 'Precision and chaos can live in the same riff.',
+};
+
+const ArtistSeriesPage = ({
+  onNav,
+  onSelectArtist,
+}: {
+  onNav: (page: string) => void;
+  onSelectArtist: (artistSlug: string) => void;
+}) => (
   <section className="bg-[#050505] min-h-screen pt-16 md:pt-20">
     {/* Featured Hero */}
     <div className="relative h-[56vh] md:h-[70vh] overflow-hidden group">
@@ -1293,10 +1346,13 @@ const ArtistSeriesPage = ({ onNav }: { onNav: (page: string) => void }) => (
           Limited to 200 pieces worldwide.
         </p>
         <button 
-          onClick={() => onNav('instruments')}
+          onClick={() => {
+            onSelectArtist('elena-voss');
+            onNav('artist-signature');
+          }}
           className="inline-flex items-center gap-3 px-6 sm:px-7 py-3 bg-white text-black text-[10px] font-black tracking-[0.2em] sm:tracking-[0.25em] uppercase rounded-full w-fit hover:bg-white/85 transition-colors cursor-pointer"
         >
-          View Signature Guitar <ChevronRight className="w-4 h-4" />
+          View Artist Signature <ChevronRight className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -1310,7 +1366,10 @@ const ArtistSeriesPage = ({ onNav }: { onNav: (page: string) => void }) => (
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ delay: i * 0.08 }}
-          onClick={() => onNav('instruments')}
+          onClick={() => {
+            onSelectArtist(artist.slug);
+            onNav('artist-signature');
+          }}
           className="grid grid-cols-[56px_1fr] md:grid-cols-[80px_1fr_auto] items-center bg-[#0a0a0a] hover:bg-[#111] transition-colors cursor-pointer"
           style={{ gap: 0, marginBottom: '2px' }}
         >
@@ -1334,7 +1393,7 @@ const ArtistSeriesPage = ({ onNav }: { onNav: (page: string) => void }) => (
           </div>
           <div className="pr-8 hidden md:block">
             <span className="px-4 py-1.5 border border-white/10 rounded-full text-[9px] font-black tracking-widest uppercase text-white/30">
-              View Series
+              View Signature
             </span>
           </div>
         </motion.div>
@@ -1342,6 +1401,299 @@ const ArtistSeriesPage = ({ onNav }: { onNav: (page: string) => void }) => (
     </div>
   </section>
 );
+
+type SignatureSpec = { label: string; value: string };
+
+const ELENA_SIGNATURE_FALLBACK = {
+  name: 'AIO. Signature "Ethereal"',
+  price: 4299,
+  description:
+    "Designed to bridge the gap between vintage warmth and modern clarity. The Ethereal features custom-voiced pickups that respond to the lightest touch, allowing for the vast dynamic range required by Elena's cinematic compositions.",
+  specs: [
+    { label: 'Body', value: 'Selected Lightweight Ash' },
+    { label: 'Neck', value: "Quartersawn Maple '60s Oval C" },
+    { label: 'Pickups', value: "Hand-Wound 'AIO-Tone' Single-Coils" },
+    { label: 'Finish', value: 'Obsidian Mirror Nitro' },
+  ] as SignatureSpec[],
+  image: 'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?auto=format&fit=crop&q=80&w=1200',
+};
+
+const parseSignatureSpecs = (value: unknown): SignatureSpec[] => {
+  if (typeof value !== 'string' || !value.trim()) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') return [];
+
+    return Object.entries(parsed)
+      .map(([label, specValue]) => ({ label, value: String(specValue) }))
+      .slice(0, 4);
+  } catch {
+    return [];
+  }
+};
+
+const pickArtistSignatureProduct = (products: any[], artistSlug: string, mappedProductId?: number): any | null => {
+  if (!Array.isArray(products) || products.length === 0) return null;
+
+  const byArtistColumn = products.find((item) => String(item?.artist ?? '').toLowerCase() === artistSlug);
+  if (byArtistColumn) return byArtistColumn;
+
+  const byMappedId = products.find((item) => Number(item?.id) === Number(mappedProductId));
+  if (byMappedId) return byMappedId;
+
+  const byArtistMatch = products.find((item) => /elena|voss|signature/i.test(String(item?.name ?? '')));
+  if (byArtistMatch) return byArtistMatch;
+
+  const byLimitedBadge = products.find((item) => String(item?.badge ?? '').toLowerCase() === 'limited');
+  if (byLimitedBadge) return byLimitedBadge;
+
+  return products[0] ?? null;
+};
+
+const ElenaVossSignaturePage = ({
+  onAddToCart,
+  products,
+  isLoading,
+  artistSlug,
+}: {
+  onAddToCart: (product: ProductLike) => void;
+  products: any[];
+  isLoading: boolean;
+  artistSlug: string;
+}) => {
+  const [showCartToast, setShowCartToast] = useState(false);
+  const selectedArtist = ARTIST_ROSTER.find((artist) => artist.slug === artistSlug) || ARTIST_ROSTER[0];
+  const signatureProduct = pickArtistSignatureProduct(products, selectedArtist.slug, selectedArtist.productId);
+  const artistNameParts = selectedArtist.name.toUpperCase().split(' ');
+  const artistFirstName = artistNameParts[0] || 'ELENA';
+  const artistLastName = artistNameParts.slice(1).join(' ') || 'VOSS';
+  const artistQuote = ARTIST_QUOTES[selectedArtist.slug] || ARTIST_QUOTES['elena-voss'];
+  const displayName = signatureProduct?.name || ELENA_SIGNATURE_FALLBACK.name;
+  const displayPrice = signatureProduct ? toDisplayPrice(signatureProduct.price) : toDisplayPrice(ELENA_SIGNATURE_FALLBACK.price);
+  const displayDescription = signatureProduct?.description || ELENA_SIGNATURE_FALLBACK.description;
+  const displayImage = signatureProduct?.image || ELENA_SIGNATURE_FALLBACK.image;
+  const productSpecs = parseSignatureSpecs(signatureProduct?.specifications);
+  const displaySpecs = productSpecs.length > 0
+    ? productSpecs
+    : signatureProduct
+      ? [
+          { label: 'Category', value: String(signatureProduct.category || 'general') },
+          { label: 'Badge', value: String(signatureProduct.badge || 'Standard') },
+          { label: 'Collection', value: 'Instruments' },
+          { label: 'Source', value: 'Products Table' },
+        ]
+      : ELENA_SIGNATURE_FALLBACK.specs;
+  const canAddToCart = Boolean(signatureProduct);
+
+  const handleAddToCart = () => {
+    if (!signatureProduct) {
+      alert('No linked catalog product found for Elena signature yet.');
+      return;
+    }
+
+    onAddToCart(signatureProduct);
+
+    setShowCartToast(true);
+    window.setTimeout(() => setShowCartToast(false), 3000);
+  };
+
+  return (
+    <section className="bg-black min-h-screen text-white pt-14 md:pt-16">
+      <div
+        className={cn(
+          'fixed bottom-10 right-6 md:right-10 z-[80] transition-all duration-700 transform',
+          showCartToast ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'
+        )}
+      >
+        <div className="bg-zinc-900/90 backdrop-blur-xl border border-white/10 p-5 rounded-2xl flex items-center space-x-5 shadow-2xl">
+          <div className="bg-white rounded-full p-1">
+            <CheckCircle2 className="text-black w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-0.5">Added to Bag</p>
+            <p className="text-xs font-bold text-white">{displayName}</p>
+          </div>
+        </div>
+      </div>
+
+      <section className="relative h-[95vh] w-full overflow-hidden flex items-end pb-20 md:pb-24 px-6 md:px-24">
+        <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-zinc-800/10 via-transparent to-transparent z-10" />
+          <SmartImage
+            src="https://images.unsplash.com/photo-1511735111819-9a3f7709049c?auto=format&fit=crop&q=80&w=2000"
+            alt="Elena Voss"
+            className="w-full h-full object-cover grayscale opacity-50 scale-100 animate-slow-zoom bg-zinc-900"
+          />
+          <div className="absolute inset-0 shimmer opacity-10 pointer-events-none" />
+        </div>
+
+        <div className="relative z-20 max-w-5xl">
+          <div
+            className="flex items-center space-x-4 mb-6 animate-fade-in opacity-0"
+            style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}
+          >
+            <div className="w-8 h-px bg-white/40" />
+            <span className="text-white/40 text-[10px] font-black tracking-[0.5em] uppercase">Artist Spotlight</span>
+          </div>
+          <h1
+            className="text-7xl md:text-[11rem] font-black tracking-tighter mb-8 leading-[0.8] animate-slide-up opacity-0"
+            style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}
+          >
+            {artistFirstName} <br /> {artistLastName}
+          </h1>
+          <p
+            className="text-zinc-400 text-lg md:text-xl max-w-xl mb-12 leading-relaxed font-light italic animate-fade-in opacity-0"
+            style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}
+          >
+            "{artistQuote}"
+          </p>
+          <button
+            onClick={() => document.getElementById('signature-section')?.scrollIntoView({ behavior: 'smooth' })}
+            className="group flex items-center space-x-6 bg-white text-black pl-10 pr-6 py-5 rounded-full font-black tracking-[0.2em] uppercase text-[10px] hover:bg-zinc-200 transition-all duration-500 transform hover:-translate-y-1 animate-fade-in opacity-0"
+            style={{ animationDelay: '0.8s', animationFillMode: 'forwards' }}
+          >
+            <span>Signature Model</span>
+            <div className="bg-black/5 rounded-full p-2 group-hover:translate-x-1 transition-transform">
+              <ChevronRight className="w-4 h-4" />
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <section id="signature-section" className="py-28 md:py-40 px-6 md:px-24 max-w-7xl mx-auto min-h-[700px] flex items-center">
+        {isLoading ? (
+          <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
+            <div className="aspect-[4/5] bg-zinc-900 rounded-2xl shimmer relative overflow-hidden" />
+            <div className="space-y-8">
+              <div className="w-24 h-4 bg-zinc-900 shimmer rounded" />
+              <div className="w-full h-20 bg-zinc-900 shimmer rounded" />
+              <div className="w-3/4 h-32 bg-zinc-900 shimmer rounded" />
+              <div className="w-40 h-12 bg-zinc-900 shimmer rounded-full" />
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
+            <div className="order-2 lg:order-1 relative group">
+              <div className="absolute -inset-10 bg-white/[0.02] blur-[120px] rounded-full group-hover:bg-white/[0.05] transition-all duration-1000" />
+              <div className="bg-zinc-900 rounded-2xl overflow-hidden shadow-2xl">
+                <SmartImage
+                  src={displayImage || PRODUCT_IMAGE_FALLBACK}
+                  alt={displayName || 'Signature guitar'}
+                  type="guitar"
+                  className="relative z-10 w-full h-auto transform transition-transform duration-1000 group-hover:scale-105"
+                />
+              </div>
+            </div>
+
+            <div className="order-1 lg:order-2 space-y-10">
+              <div className="space-y-4">
+                <h2 className="text-zinc-600 text-[10px] font-black tracking-[0.4em] uppercase">THE INSTRUMENT</h2>
+                <h3 className="text-5xl md:text-7xl font-black tracking-tight leading-tight">{displayName}</h3>
+                <p className="text-3xl text-white/40 font-extralight tracking-widest italic">{displayPrice}</p>
+              </div>
+
+              <p className="text-zinc-400 leading-relaxed font-light text-xl">{displayDescription}</p>
+
+              <div className="grid grid-cols-2 gap-x-12 gap-y-8 pt-10 border-t border-white/5">
+                {displaySpecs.map((spec) => (
+                  <div key={spec.label} className="group">
+                    <p className="text-[9px] text-zinc-600 uppercase tracking-[0.3em] mb-2 group-hover:text-white/40 transition-colors">
+                      {spec.label}
+                    </p>
+                    <p className="text-sm font-bold text-zinc-200 tracking-wide">{spec.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={handleAddToCart}
+                disabled={!canAddToCart}
+                className="w-full sm:w-auto bg-transparent border border-white/10 hover:border-white hover:bg-white hover:text-black px-16 py-5 rounded-full font-black tracking-[0.2em] uppercase text-[10px] transition-all duration-500 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Add to Bag
+              </button>
+              {!canAddToCart && (
+                <p className="text-[10px] uppercase tracking-[0.25em] text-white/35">
+                  No matching product found in instruments table.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="py-20 md:py-32 px-4 md:px-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[700px] md:h-[900px]">
+          <div className="relative group overflow-hidden md:col-span-2 bg-zinc-900 rounded-3xl shadow-2xl cursor-none">
+            <SmartImage
+              src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=2070&auto=format&fit=crop"
+              className="w-full h-full object-cover transform transition-all duration-[2s] group-hover:scale-110 opacity-70 group-hover:opacity-100 grayscale-[0.3] group-hover:grayscale-0"
+              alt="Studio Session"
+            />
+            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-700 flex flex-col items-center justify-center space-y-6">
+              <div className="w-20 h-20 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 transform scale-50 group-hover:scale-100 transition-transform duration-700">
+                <Play className="w-8 h-8 text-white ml-1" fill="white" />
+              </div>
+              <p className="text-[10px] tracking-[0.5em] uppercase font-black text-white">Watch Session</p>
+            </div>
+          </div>
+
+          <div className="grid grid-rows-2 gap-6">
+            <div className="overflow-hidden bg-zinc-900 rounded-3xl relative group cursor-pointer shadow-xl">
+              <SmartImage
+                src="https://images.unsplash.com/photo-1459749411177-042180ce673c?q=80&w=2070&auto=format&fit=crop"
+                className="w-full h-full object-cover transition-all duration-[2s] hover:scale-110 opacity-70 hover:opacity-100"
+                alt="Live Performance"
+              />
+            </div>
+            <div className="overflow-hidden bg-zinc-900/40 flex flex-col items-center justify-center p-12 space-y-6 rounded-3xl border border-white/5 backdrop-blur-sm relative group cursor-pointer">
+              <h4 className="text-[10px] font-black tracking-[0.4em] uppercase text-white/40">The Tour</h4>
+              <p className="text-center text-zinc-200 text-lg italic font-light leading-relaxed">
+                Join the 2026 <br /> 'Monolith' Global Tour
+              </p>
+              <button className="text-[9px] font-black border-b border-white/20 pb-2 hover:border-white transition-all uppercase tracking-[0.3em] text-white/60 hover:text-white">
+                View Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes slide-up { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes slow-zoom { from { transform: scale(1); } to { transform: scale(1.1); } }
+            @keyframes shimmer {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(100%); }
+            }
+            .animate-fade-in { animation: fade-in 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+            .animate-slide-up { animation: slide-up 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+            .animate-slow-zoom { animation: slow-zoom 30s ease-in-out infinite alternate; }
+            .shimmer {
+              position: relative;
+              overflow: hidden;
+            }
+            .shimmer::after {
+              content: "";
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+              animation: shimmer 2s infinite linear;
+            }
+          `,
+        }}
+      />
+    </section>
+  );
+};
 
 const AboutPage = () => (
   <section className="bg-[#050505] min-h-screen pt-24 md:pt-32 px-4 sm:px-10">
@@ -1486,6 +1838,7 @@ const ProfilePage = ({ user }: { user: FirebaseUser }) => {
 
 export default function App() {
   const [page, setPage] = useState('home');
+  const [selectedArtistSlug, setSelectedArtistSlug] = useState('elena-voss');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -1493,6 +1846,7 @@ export default function App() {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
+  const [isProductsLoading, setIsProductsLoading] = useState(true);
 
   const loadCart = async (userId: string) => {
     const { data, error } = await supabase
@@ -1520,6 +1874,7 @@ export default function App() {
 
   useEffect(() => {
     const fetchProducts = async () => {
+      setIsProductsLoading(true);
       try {
         const { data, error } = await supabase
           .from('products')
@@ -1532,6 +1887,8 @@ export default function App() {
         })));
       } catch (err) {
         console.error("Fetch products error:", err);
+      } finally {
+        setIsProductsLoading(false);
       }
     };
     fetchProducts();
@@ -1935,7 +2292,15 @@ export default function App() {
             />
           )}
           {page === 'custom' && <CustomShopPage onAddToCart={addToCart} />}
-          {page === 'artists' && <ArtistSeriesPage onNav={setPage} />}
+          {page === 'artists' && <ArtistSeriesPage onNav={setPage} onSelectArtist={setSelectedArtistSlug} />}
+          {(page === 'artist-signature' || page === 'artist-signature-elena-voss') && (
+            <ElenaVossSignaturePage
+              onAddToCart={addToCart}
+              products={products}
+              isLoading={isProductsLoading}
+              artistSlug={selectedArtistSlug}
+            />
+          )}
           {page === 'about' && <AboutPage />}
           {page === 'profile' && user && <ProfilePage user={user} />}
         </motion.div>
